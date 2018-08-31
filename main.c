@@ -6,6 +6,7 @@
 #include "io.h"
 #include "io.c"
 #include <ucr/timer.h>
+
 // BUTTONS:
 #define start_btn ~PIND & 0x02 // D1
 #define reset_btn ~PIND & 0x08 // D3
@@ -14,26 +15,19 @@
 #define up_btn ~PIND & 0x04 // D2
 #define down_btn ~PIND & 0x10 // D4
 
-//#include <LiquidCrystal.h>
 unsigned char tempBoardArray[8][8];
-unsigned char rowData[8];
-unsigned char columnData[8];
-unsigned char start; // boolean for start btn press
-unsigned char reset; //boolean for reset btn press
-unsigned char end;  // boolean for end game
-unsigned short score; 
-unsigned char gameover; 
-unsigned char foodX; 
-unsigned char foodY; 
-unsigned char seed; 
-unsigned char LCDstart; 
-unsigned char gamerunning; 
-unsigned char highscore; 
-unsigned char input; 
-unsigned char cnt_timekeeper;
-unsigned char LCDstop; 
-unsigned char direction, left_dir, right_dir, up_dir, down_dir; // direction booleans
-unsigned char eaten; // is food eaten? 
+unsigned char foodcoords;
+unsigned char start = 0; // boolean for start btn press
+unsigned char reset = 0; //boolean for reset btn press
+unsigned char end = 0;  // boolean for end game
+unsigned char pscore = 0; 
+unsigned char gameover = 0; 
+unsigned char foodX = 0; 
+unsigned char foodY = 0; 
+unsigned char seed = 0; 
+unsigned char gamerunning = 0; 
+unsigned char highscore = 0; 
+unsigned char eaten = 0; // is food eaten? 
 
 // General structure of grid objects
 typedef struct _gridObject{
@@ -48,7 +42,7 @@ gridObject body[64];
 gridObject board[64];
 
 void IncrementScore(){
-	score++;
+	pscore = pscore + 1;
 }
 
 // Get X coordinate
@@ -61,7 +55,7 @@ unsigned char getY(gridObject o){
 }
 // CHECK FOR END OF GAME
 void endGame(){
-	end = 0x00;
+	
 	unsigned char x = 0x00;
 	unsigned char y = 0x00;
 	
@@ -69,21 +63,27 @@ void endGame(){
 	y = getY(head);
 	// left bound
 	if (x == 0x80){
-		end = 0x01;
+		end = 1;
 	}
 	// right bound
 	else if (x == 0x01){
-		end = 0x01;
+		
+		end = 1;
+
 	}
 	// up bound
 	else if (y == 0x80){
-		end = 0x01;
+		
+		end = 1;
+
+
+	
 	}
 	else if (y == 0x01){
-		end = 0x01;
+		end = 1;
 	}
 	else {
-		end = 0x00;
+		end = 0;
 	}
 }
 // SET initial SNAKE COORDS - randomize in the future; 
@@ -101,6 +101,13 @@ void InitSnake(){
 	body->size = 3;
 
 }
+
+
+void initFood(){
+	foodX = 0x08; 
+	foodY = 0x02; 
+}
+
 
 //MOVE functions: 
 void moveLeft(){
@@ -228,43 +235,13 @@ void moveDown(){
 	}
 }
 
-// void moveUp(){
-// 	unsigned char r;
-// 	
-// 	head.ycoord = head.ycoord << 1;
-// 	head.xcoord = head.xcoord;
-// 	// move body - each block first up by 1 block
-// 	for (r = 0; r < (body->size); r++)
-// 	{
-// 		body[r].ycoord = body[r].ycoord << 1;
-// 	}
-// }
-// void moveDown(){
-// 	unsigned char r;
-// 	head.ycoord = head.ycoord >> 1;
-// 	head.xcoord = head.xcoord;
-// 	for (r = 0; r < (body->size); r++)
-// 	{
-// 		body[r].ycoord = body[r].ycoord >> 1;
-// 	}
-// }
-
-
-// initialize the board: 
-// void initBoard(){
-// 	unsigned char m, n; 
-// 	for (m = 0; m < 8; m++){
-// 		for (n = 0; n < 8; n++){
-// 			tempBoardArray[m][n] = 0x00; 
-// 		}
-// 	}
-// }
-
+void clearEatenFood(){
+	foodY = 0x00;
+}
 
 void grow(){
 	
 	unsigned char a, p; 
-	unsigned char oldSize; 
 	unsigned char tempHX; 
 	unsigned char tempHY; 
 	
@@ -293,35 +270,54 @@ void grow(){
 	// reassign head:
 	head.xcoord = foodX;
 	head.ycoord = foodY;
+	clearEatenFood();
 	
 }
 
 void generateFood(){
-// 	seed = 26; 
-// 	foodX = srand(seed) % 5; 
-// 	foodY = srand(seed) % 5; 
-// 	seed++; 
 
-foodX = 0x08; 
-foodY = 0x02; 
+
+foodcoords = rand() % 4;
+switch(foodcoords){
+	
+	 case 0:
+	 foodX = 0x40;
+	 foodY = 0x40;
+	 break;
+	
+	case 1:
+	foodX = 0x10;
+	foodY = 0x20;
+	break;
+	
+	case2:
+	foodX = 0x04;
+	foodY = 0x08;
+	break; 
+	
+	case 3: 
+	foodX = 0x20;
+	foodY = 0x04;
+	break;
+	
+}
+
+eaten = 0; 
+
+
+
 }
 
 void checkifeatenfood(){
 	if((foodX == head.xcoord) && (foodY == head.ycoord)){
 		grow(); 
 		eaten = 1; 
+		IncrementScore();
+		generateFood(); 
+		
 	}
 }
-// 
-// void displayBoard(){
-// 	unsigned char p, q; 
-// 	for (p = 0; p < 8; p++){
-// 		for (q = 0; q < 8; q++){
-// // 		PORTB = ~tempBoardArray[p][q]; 
-// // 		PORTC = tempBoardArray[p][q]; 
-// 		}
-// 	}
-// }
+
 // update matrix board
 void updateMatrix(){
 unsigned char w, s, b; 
@@ -351,48 +347,17 @@ void LCD_build(unsigned char location, unsigned char *ptr){
 
 void makeCustomChar() {
 	static unsigned char foodpiece[8] = {
-		0b00000,
-		0b00000,
-		0b00000,
-		0b01010,
-		0b10101,
-		0b10001,
-		0b01110,
-		0b00000
+		 0b00011,
+		 0b00110,
+		 0b00100,
+		 0b01110,
+		 0b11011,
+		 0b10001,
+		 0b11011,
+		 0b01110
 	};
-	
 	LCD_build(0, foodpiece);
 }
-
-void newGame(){
-	InitSnake(); // draw snake; 
-	generateFood(); // draw food
-	score = 0x00; // null the score
-	//highscore = loadScore(); // load highscore; 
-}
-
-// LiquidCrystal lcd(12, 11, 5, 4, 3, 2); // RS, E, D4, D5, D6, D7
-// 
-// byte customChar[] = {
-// 	B00000,
-// 	B00000,
-// 	B00000,
-// 	B01010,
-// 	B10101,
-// 	B10001,
-// 	B01110,
-// 	B00000
-// };
-// 
-// void setup() {
-// 	lcd.begin(16, 2);
-// 	lcd.createChar(0, customChar);
-// 	lcd.home();
-// 	lcd.write(0);
-// }
-// 
-// void loop() { }
-	
 
 
 // EEPROM functions 
@@ -400,14 +365,22 @@ void saveScore (unsigned char s){
 	eeprom_write_byte(0, s); 
 }
 unsigned char loadScore(){
-	unsigned char s; 
-	s = eeprom_read_byte(0); 
-	return s; 
+	unsigned char h = eeprom_read_byte(0); 
+	if (h == 255){
+		highscore = 0;
+	}
+	else{
+		highscore = h; 
+	}
+	
+	return highscore; 
 }
 
 
 
-
+void loadCustomChar() {
+	LCD_WriteData(0);
+}
 
 //--------Find GCD function --------------------------------------------------
 unsigned long int findGCD(unsigned long int a, unsigned long int b)
@@ -471,8 +444,7 @@ int food_tick(int state){
 	}
 		switch(state){
 			
-			case Init6: 
-			eaten = 0x01; 
+			case Init6:  
 			break; 
 			
 			case food_present: 
@@ -484,118 +456,6 @@ int food_tick(int state){
 		}
 	return state; 
 }
-
-
-	
-	
-
-// TIMEKEEPER TASK sets updateBoard every 1ms for Matrix task
-// enum time_states{Init}; 
-// int timekeeper_tick(int state)
-// {
-// 	// transitions
-// 	switch(state){
-// 		case Init:
-// 		cnt_timekeeper = 0; 
-// 		if (start){
-// 			if (cnt_timekeeper < 1)
-// 			{
-// 				cnt_timekeeper++; 
-// 			}
-// 		}
-// 		break;
-// 	}
-// 	//actions
-// 	switch(state){
-// 		case Init:
-// 		//updateBoard = 1;
-// 		break; 
-// 	}
-// return state; };
-
-// INPUT PROCESSOR TASK sets start/reset vars for Display task, Timekeeper Task, Game Task: 
-// 	enum input_states{Init2, Wait, StartB, StartBReleased, ResetB, ResetBReleased};
-// 	int input_tick(int state){
-// 		// transitions
-// 		switch(state){
-// 			case Init2:
-// 				state = Wait; 
-// 			break;
-// 			
-// 			case Wait:
-// 				if (start_btn){
-// 					state = StartB; 
-// 				}
-// 				if (reset_btn){
-// 					state = ResetB; 
-// 				}
-// 			break; 
-// 			
-// 			case StartB:
-// 				if (!(start_btn)){
-// 					state = StartBReleased; 
-// 				}
-// 				else{
-// 					state = state; 
-// 				}
-// 			break;
-// 			
-// 			case StartBReleased:
-// 				state = Wait;  
-// 			break;
-// 			
-// 			case ResetB:
-// 			if (!(reset_btn)){
-// 				state = ResetBReleased;
-// 			}
-// 			else{
-// 				state = state;
-// 			}
-// 			break;
-// 			
-// 			case ResetBReleased: 
-// 				state = Wait;  
-// 			break; 
-// 			
-// 		}
-// 		// actions
-// 		switch(state){
-// 			case Init2:
-// 			break;
-// 			
-// 			case Wait: 
-// 				start = 0x00;
-// 				reset = 0x00;
-// 			break; 
-// 			
-// 			case StartB:
-// 			start = 0x01; 
-// 				InitSnake();
-// 				generateFood();
-// 				score = 0x00;
-// 				LCDstop = 0x00;
-// 			break;
-// 			
-// 			case StartBReleased:
-// 			break;
-// 			
-// 			case ResetB:
-// 			reset = 0x01; 
-// 			score = 0x00; 
-// 			InitSnake();
-// 			generateFood();
-// 			score = 0x00;
-// 			LCDstop = 0x00;
-// 			break;
-// 			
-// 			case ResetBReleased:
-// 			break;
-// 			
-// 		}
-// 		return state; 
-// 		};
-
-
 
 
 // GAME TASK
@@ -643,6 +503,7 @@ int move_tick(int state) {
 		break; 
 	
 		case LeftR:
+		if (!end){
 			if (right_btn){
 				state = Right; 
 			}
@@ -658,6 +519,10 @@ int move_tick(int state) {
 			else{
 				state = state; 
 			}
+		}
+		else{
+			state = EndGame; 
+		}
 		break; 
 	
 		case Right: 
@@ -669,7 +534,8 @@ int move_tick(int state) {
 		}
 		break; 
 	
-		case RightR: 
+		case RightR:
+		if (!end){ 
 			if (left_btn){
 				state = Left; 
 			}
@@ -685,6 +551,10 @@ int move_tick(int state) {
 			else{
 				state = state; 
 			}
+		}
+		else{
+			state = EndGame; 
+		}
 		break; 
 	
 		case Up: 
@@ -697,6 +567,8 @@ int move_tick(int state) {
 		break; 
 	
 		case UpR: 
+		
+		if (!end){
 			if(left_btn){
 				state = Left;
 			}
@@ -712,6 +584,10 @@ int move_tick(int state) {
 			else{
 				state = state;
 			}
+		}
+		else {
+			state = EndGame; 
+		}
 		break; 
 	
 		case Down: 
@@ -724,7 +600,9 @@ int move_tick(int state) {
 		break; 
 	
 		case DownR: 
-			if(left_btn){
+			if (!end) {
+				
+				if(left_btn){
 				state = Left; 
 			}
 			else if (right_btn){
@@ -739,31 +617,40 @@ int move_tick(int state) {
 			else{
 				state = state; 
 			}
+		}
+		else {
+			state = EndGame; 
+		}
 		break; 
 		
 		case Reset: 
-			state = WaitMove; 
+			state = InitGame; 
 		break; 
 		
 		case EndGame: 
 			if (start_btn){
-				state = WaitMove; 
+				state = InitGame; 
 			}		
 			else if (reset_btn){
-				state = WaitMove; 
+				state = InitGame; 
 			}
 			else{
 				state = state; 
 			}
+			break; 
 		}
 
 	//actions:
 	switch(state){
 		case InitGame:
+		highscore = loadScore();
+		InitSnake();
+		initFood();
+		gameover = 0; 
 		break;
 		
 		case WaitMove: 
-					newGame();
+		start = 1; 
 		break;
 		
 		case Left:
@@ -774,10 +661,6 @@ int move_tick(int state) {
 		if (!end){
 			moveLeft(); 
 			checkifeatenfood(); 
-			
-			if (eaten){
-			//IncrementScore();
-			}
 		}
 		break;
 		
@@ -789,11 +672,6 @@ int move_tick(int state) {
 		if (!end){
 			moveRight();
 			checkifeatenfood(); 
-			
-			if (eaten){
-				//IncrementScore();
-			}
-			
 			} 
 		break;
 		
@@ -804,12 +682,7 @@ int move_tick(int state) {
 		endGame();
 		if (!end){
 			moveUp(); 
-			checkifeatenfood(); 
-			
-			if (eaten){
-				//IncrementScore();
-			}
-			
+			checkifeatenfood();
 			}
 		break;
 		
@@ -821,17 +694,16 @@ int move_tick(int state) {
 		if (!end){
 			moveDown(); 
 			checkifeatenfood(); 
-			
-			if (eaten){
-				//IncrementScore();
-			}
 		}
 		break;
 		
 		case Reset: 
+		reset = 1; 
 		break; 
 		
 		case EndGame: 
+		gameover = 1; 
+		saveScore(highscore);
 		break; 
 	}	
 	
@@ -857,6 +729,8 @@ int matrix_tick(int state) {
 		break; 
 		
 		case Gameover: 
+		PORTB = 0xFF;
+		PORTC = 0x00;
 		break; 
 	}
 	// actions
@@ -889,7 +763,7 @@ int display_tick(int state) {
 	};
 	
 	static unsigned char score[32] = {
-		'S', 'C', 'O', 'R', 'E', ':', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
+		'@', ' ', 'S', 'C', 'O', 'R', 'E', ':', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ',
 		' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
 	};
 	
@@ -906,7 +780,7 @@ int display_tick(int state) {
 		break; 
 		
 		case Instructions: 
-			if (LCDstart){
+			if (start){
 				state = Score;
 			}
 			else{
@@ -918,7 +792,7 @@ int display_tick(int state) {
 			if (reset){
 				state = Instructions;
 			}
-			else if (LCDstop){
+			else if (gameover){
 				state = Gameover_LCD; 
 			}
 			else{
@@ -927,15 +801,6 @@ int display_tick(int state) {
 		break; 
 		
 		case Gameover_LCD: 
-			if (start){
-				state = Instructions;
-			}
-			else if (reset){
-				state = Instructions; 
-			}
-			else{
-				state = state; 
-			}
 		break; 
 	}
 	//actions
@@ -952,8 +817,8 @@ int display_tick(int state) {
 		break;
 		
 		case Score:
-		LCD_ClearScreen(); 
-		tempScore = score;
+
+		tempScore = pscore;
 		
 		ones = tempScore % 10;
 		tempScore = tempScore - ones;
@@ -970,15 +835,37 @@ int display_tick(int state) {
 		
 		for (unsigned char i = 0; i < 32; i++) {
 			LCD_Cursor(i + 1);
+			 if (score[i] == '@') {
+				 loadCustomChar();}
 			LCD_WriteData(score[i]);
 			LCD_Cursor(0);
 		}
-		
-		
 		break;
 		
 		case Gameover_LCD:
-		LCD_ClearScreen();
+				
+		if (highscore > pscore){
+			highscore = highscore;
+			tempScore = highscore;}
+			else
+			{
+			highscore = pscore;
+			tempScore = highscore;
+			}
+		
+		ones = tempScore % 10;
+		tempScore = tempScore - ones;
+		
+		tens = (tempScore % 100) / 10;
+		tempScore = tempScore - tens;
+		
+		hundreds = (tempScore % 1000) / 100;
+		tempScore = tempScore - hundreds;
+		
+		gameovermes[27] = '0' + hundreds;
+		gameovermes[28] = '0' + tens;
+		gameovermes[29] = '0' + ones;
+		
 		for (unsigned char i = 0; i < 32; i++) {
 			LCD_Cursor(i + 1);
 			LCD_WriteData(gameovermes[i]);
@@ -1003,12 +890,9 @@ int main(void)
 	DDRD = 0xC0; PORTD = 0x3F; // input buttons + LCD
 
 
-
-
 	// Period for the tasks
-	//unsigned long int timeKeeper_calc = 200; 
-// 	unsigned long int inputProcessor_calc = 100;
-	unsigned long int move_calc = 100;
+
+	unsigned long int move_calc = 200;
 	unsigned long int matrix_calc = 1; 
 	unsigned long int LCD_Display_calc = 200; 
 	unsigned long int food_period_calc = 1; 
@@ -1016,9 +900,9 @@ int main(void)
 	//Calculating GCD
 	unsigned long int tmpGCD = 1;
 	
-// 	tmpGCD = findGCD(inputProcessor_calc, move_calc);
 	tmpGCD = findGCD(move_calc, LCD_Display_calc);
 	tmpGCD = findGCD(tmpGCD, food_period_calc); 
+	tmpGCD = findGCD(tmpGCD, matrix_calc); 
 	
 	//Greatest common divisor for all tasks or smallest time unit for tasks.
 	unsigned long int GCD = tmpGCD;
@@ -1034,18 +918,6 @@ int main(void)
 	static task task3, task4, task5, task6;
 	task *tasks[] = { &task3, &task4, &task5, &task6};
 	const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
-
-// 	TimeKeeper
-// 		task1.state = Init;//Task initial state.
-// 		task1.period = timeKeeper_period;//Task Period.
-// 		task1.elapsedTime = 0;//Task current elapsed time.
-// 		task1.TickFct = &timekeeper_tick;//Function pointer for the tick.
-// 
-// 	// Input Processor
-// 	task2.state = ;//Task initial state.
-// 	task2.period = inputProcessor_period;//Task Period.
-// 	task2.elapsedTime = 0;//Task current elapsed time.
-// 	task2.TickFct = &input_tick;//Function pointer for the tick.
 
 	// Game Controller
 	task3.state = InitGame;//Task initial state.
@@ -1076,7 +948,8 @@ int main(void)
 	TimerOn();
 	
 		LCD_init();
-
+		makeCustomChar(); 
+		
 	unsigned short i; // Scheduler for-loop iterator
 
     while (1) 
@@ -1104,4 +977,3 @@ int main(void)
 	// Error: Program should not exit!
 	return 0; 
 }
-
