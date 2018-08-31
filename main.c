@@ -4,12 +4,12 @@
 #include <string.h>
 #include <ucr/timer.h>
 // BUTTONS:
-#define start_btn ~PINA & 0x02 // A1
-#define reset_btn ~PINA & 0x08 // A3
-#define right_btn ~PINA & 0x01 // A0
-#define left_btn ~PINA & 0x20 // A5
-#define up_btn ~PINA & 0x04 // A2
-#define down_btn ~PINA & 0x10 // A4
+#define start_btn ~PIND & 0x02 // A1
+#define reset_btn ~PIND & 0x08 // A3
+#define right_btn ~PIND & 0x01 // A0
+#define left_btn ~PIND & 0x20 // A5
+#define up_btn ~PIND & 0x04 // A2
+#define down_btn ~PIND & 0x10 // A4
 
 unsigned char tempBoardArray[8][8];
 unsigned char rowData[8];
@@ -580,15 +580,77 @@ int matrix_tick(int state) {
 	return state;
 }
 
+// DISPLAY TASK
+enum display_tick {Init5, Instructions, Score, Gameover_LCD};
+int display_tick(int state) {
+	
+	//transitions
+	switch(state){
+		case Init5: 
+			state = Instructions; 
+		break; 
+		
+		case Instructions: 
+			if (LCDstart){
+				state = Score;
+			}
+			else{
+				state = state; 
+			}
+		break; 
+		
+		case Score: 
+			if (reset){
+				state = Instructions;
+			}
+			else if (LCDstop){
+				state = Gameover_LCD; 
+			}
+			else{
+				state = state; 
+			}
+		break; 
+		
+		case Gameover_LCD: 
+			if (start){
+				state = Instructions;
+			}
+			else if (reset){
+				state = Instructions; 
+			}
+			else{
+				state = state; 
+			}
+		break; 
+	}
+	//actions
+	switch(state){
+		case Init5:
+		break;
+		
+		case Instructions:
+		// show instructions
+		break;
+		
+		case Score:
+		// display score
+		break;
+		
+		case Gameover_LCD:
+		// add function for LCD gameover
+		break;
+	}	
+	return state;
+}
+
 
 int main(void)
 {
 	// Set Data Direction Registers
-	DDRA = 0x00; PORTA = 0xFF; // input buttons
+	DDRA = 0xFF; PORTA = 0x00; // LCD output
 	DDRB = 0xFF; PORTB = 0x00; // matrix columns
 	DDRC = 0xFF; PORTC = 0x00; // matrix rows
-	
-
+	DDRD = 0xC0; PORTD = 0xF3; // LCD + input buttons
 
 	// Period for the tasks
 	//unsigned long int timeKeeper_calc = 200; 
@@ -611,11 +673,12 @@ int main(void)
 // 	unsigned long int inputProcessor_period = inputProcessor_calc/GCD;
 	unsigned long int move_period = 200;
 	unsigned long int matrix_period = 1;
+	unsigned long int LCD_Display_period = 200;
 	unsigned long int food_period = 50; 
 	
 	//Declare an array of tasks
-	static task task3, task4;
-	task *tasks[] = { &task3, &task4};
+	static task task3, task4, task5;
+	task *tasks[] = { &task3, &task4, &task5};
 	const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
 
 // 	TimeKeeper
@@ -641,11 +704,19 @@ int main(void)
 	task4.period = matrix_period;//Task Period.
 	task4.elapsedTime = 0;//Task current elapsed time.
 	task4.TickFct = &matrix_tick;//Function pointer for the tick.
+	
+	// LCD screen
+	task5.state = Init5;//Task initial state.
+	task5.period = LCD_Display_period;//Task Period.
+	task5.elapsedTime = 0;//Task current elapsed time.
+	task5.TickFct = &display_tick;//Function pointer for the tick.
 
 	// Set the timer and turn it on
 	TimerSet(GCD);
 	TimerOn();
 
+	LCD_init();
+	
 	unsigned short i; // Scheduler for-loop iterator
 
     while (1) 
